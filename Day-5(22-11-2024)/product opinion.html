@@ -1,0 +1,144 @@
+CREATE DATABASE opinions_db;
+
+USE opinions_db;
+
+CREATE TABLE opinions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    opinion TEXT NOT NULL
+);
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Opinion Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .form-container {
+            width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Submit Your Opinion</h1>
+        <form action="opinion_service.php" method="post">
+            <label for="product_name">Product Name:</label>
+            <input type="text" id="product_name" name="product_name" required>
+            
+            <label for="opinion">Opinion:</label>
+            <textarea id="opinion" name="opinion" rows="4" required></textarea>
+            
+            <input type="submit" value="Submit Opinion">
+        </form>
+
+        <h1>Retrieve Opinions</h1>
+        <form action="opinion_service.php" method="get">
+            <label for="product_name">Product Name:</label>
+            <input type="text" id="product_name" name="product_name" required>
+            
+            <input type="submit" value="Get Opinions">
+        </form>
+    </div>
+
+    <?php
+    header('Content-Type: application/json');
+
+    $servername = "localhost";
+    $username = "root";
+    $password = "";
+    $dbname = "opinions_db";
+
+    // Create connection
+    $conn = new mysqli($servername, $username, $password, $dbname);
+
+    // Check connection
+    if ($conn->connect_error) {
+        die(json_encode(array("status" => "error", "message" => "Connection failed: " . $conn->connect_error)));
+    }
+
+    // Handle POST request to collect opinions
+    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_name']) && isset($_POST['opinion'])) {
+        $product_name = htmlspecialchars($_POST['product_name']);
+        $opinion = htmlspecialchars($_POST['opinion']);
+
+        if (!empty($product_name) && !empty($opinion)) {
+            $stmt = $conn->prepare("INSERT INTO opinions (product_name, opinion) VALUES (?, ?)");
+            $stmt->bind_param("ss", $product_name, $opinion);
+
+            if ($stmt->execute()) {
+                echo json_encode(array("status" => "success", "message" => "Opinion submitted successfully."));
+            } else {
+                echo json_encode(array("status" => "error", "message" => "Failed to submit opinion: " . $stmt->error));
+            }
+
+            $stmt->close();
+        } else {
+            echo json_encode(array("status" => "error", "message" => "All fields are required."));
+        }
+    }
+
+    // Handle GET request to retrieve opinions
+    if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['product_name'])) {
+        $product_name = htmlspecialchars($_GET['product_name']);
+
+        if (!empty($product_name)) {
+            $stmt = $conn->prepare("SELECT opinion FROM opinions WHERE product_name = ?");
+            $stmt->bind_param("s", $product_name);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $opinions = array();
+            while ($row = $result->fetch_assoc()) {
+                $opinions[] = $row['opinion'];
+            }
+
+            echo json_encode(array("status" => "success", "opinions" => $opinions));
+
+            $stmt->close();
+        } else {
+            echo json_encode(array("status" => "error", "message" => "Product name is required."));
+        }
+    }
+
+    $conn->close();
+    ?>
+</body>
+</html>

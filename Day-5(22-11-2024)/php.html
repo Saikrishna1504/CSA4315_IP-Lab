@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Registration Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .form-container {
+            width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Register</h1>
+        <form action="register.php" method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <input type="submit" value="Register">
+        </form>
+    </div>
+
+    <?php
+    // Database configuration
+    $servername = "localhost";
+    $username = "root";
+    $password = "";
+    $dbname = "user_database";
+
+    // Create connection
+    $conn = new mysqli($servername, $username, $password, $dbname);
+
+    // Check connection
+    if ($conn->connect_error) {
+        die("Connection failed: " . $conn->connect_error);
+    }
+
+    // Function to validate form data using regular expressions
+    function validate_data($data) {
+        $errors = array();
+
+        // Validate name (only letters and whitespace allowed)
+        if (!preg_match("/^[a-zA-Z ]*$/", $data['name'])) {
+            $errors[] = "Only letters and white space allowed in name";
+        }
+
+        // Validate email
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "Invalid email format";
+        }
+
+        // Validate password (must be at least 6 characters)
+        if (!preg_match("/^.{6,}$/", $data['password'])) {
+            $errors[] = "Password must be at least 6 characters long";
+        }
+
+        return $errors;
+    }
+
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        $name = htmlspecialchars($_POST['name']);
+        $email = htmlspecialchars($_POST['email']);
+        $password = htmlspecialchars($_POST['password']);
+
+        $data = array(
+            'name' => $name,
+            'email' => $email,
+            'password' => $password
+        );
+
+        $validation_errors = validate_data($data);
+
+        if (empty($validation_errors)) {
+            // Store the validated data in the database
+            $stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $name, $email, $password);
+
+            if ($stmt->execute()) {
+                echo "<p style='color:green;'>Registration successful!</p>";
+            } else {
+                echo "<p style='color:red;'>Error: " . $stmt->error . "</p>";
+            }
+
+            $stmt->close();
+        } else {
+            foreach ($validation_errors as $error) {
+                echo "<p style='color:red;'>" . $error . "</p>";
+            }
+        }
+    }
+
+    $conn->close();
+    ?>
+</body>
+</html>
